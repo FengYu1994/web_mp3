@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimum-scale=1.0, maximum-scale=1.0" />
+		<title></title>
+		<script>
+			var exports = {};
+		
+			var browsers = [
+			  [ 'chrome', /Chrom(?:e|ium)\/([0-9\.]+)(:?\s|$)/ ],
+			  [ 'firefox', /Firefox\/([0-9\.]+)(?:\s|$)/ ],
+			  [ 'opera', /Opera\/([0-9\.]+)(?:\s|$)/ ],
+			  [ 'ie', /Trident\/7\.0.*rv\:([0-9\.]+)\).*Gecko$/ ],
+			  [ 'ie', /MSIE\s([0-9\.]+);.*Trident\/[4-7].0/ ],
+			  [ 'ie', /MSIE\s(7\.0)/ ],
+			  [ 'ie', /MSIE\s(6\.0)/ ],
+			  [ 'bb10', /BB10;\sTouch.*Version\/([0-9\.]+)/ ],
+			  [ 'android', /Android\s([0-9\.]+)/ ],
+			  [ 'ios', /iPad\;\sCPU\sOS\s([0-9\._]+)/ ],
+			  [ 'ios',  /iPhone\;\sCPU\siPhone\sOS\s([0-9\._]+)/ ],
+			  [ 'safari', /Safari\/([0-9\._]+)/ ],
+			  [ 'edge', /Edge\/([0-9\._]+)/ ]
+			];
+			
+			var i = 0, mapped =[];
+			for (i = 0; i < browsers.length; i++) {
+			  browsers[i] = createMatch(browsers[i]);
+			  if (isMatch(browsers[i])) {
+			    mapped.push(browsers[i]);
+			  }
+			}
+			
+			var match = mapped[0];
+			var parts = match && match[3].split(/[._]/).slice(0,3);
+			
+			while (parts && parts.length < 3) {
+			  parts.push('0');
+			}
+			
+			// set the name and version
+			exports.name = match && match[0];
+			exports.version = parts && parts.join('.');
+			if(exports.name == 'ie'){
+				exports.version = parseInt(exports.version.substring(0, exports.version.indexOf('.'))); 
+			}
+			
+			function createMatch(pair) {
+			  return pair.concat(pair[1].exec(navigator.userAgent));
+			}
+			
+			function isMatch(pair) {
+			  return !!pair[2];
+			}		
+		
+			function Music(url, type, viewCallback, eventCallback){
+				this.url = url;
+				this.type = type;
+				this.viewCallback = viewCallback;
+				this.eventCallback = eventCallback;
+				this.isSupportAudio = isSupportAudio(this.type);
+			}
+			
+			Music.prototype.init = function(){
+				var self = this;
+				if (this.isSupportAudio) {
+					this.createAudioPlayer();
+				} else {
+					try{this.createSwfPlayer()}catch(e){};
+				}
+				this.viewCallback['init'].call(this);
+				this.eventCallback['init'].call(this);
+			}
+			
+			Music.prototype.createAudioPlayer = function(){
+				var self = this;
+				this.musicEl = document.createElement('audio');
+				this.musicEl.src = this.url;
+				this.musicEl.type = this.type;
+				this.musicEl.stop = function(){
+					this.pause();
+					this.currentTime = 0.0;
+				}
+				addEvent(this.musicEl, 'ended', function(){
+					m_console('播放结束停止MP3');
+					self.viewCallback['stop'].call();
+				});
+				this.musicEl.getPaused = function(){
+	        		return this.paused;
+	        	}
+			}
+			
+			Music.prototype.createSwfPlayer = function(){		
+				var self =this;
+				var musicId = 'swfPlayer';
+				var id = 'player_hidden';
+				var swf = 'music.swf';
+				var html = flashHtml(id, swf, 'id='+id);
+		        this.musicEl = document.createElement('div');
+		        this.musicEl.innerHTML += html;
+		        this.musicEl.id = musicId;
+		        document.body.innerHTML += this.musicEl.outerHTML;
+		        
+		        var flashEl = (exports.name == 'ie' && exports.version <= 7) ? window[id] : document[id]; 
+		        
+		        setTimeout(function(){
+		        	flashEl.emit('load', self.url);
+		        	flashEl.emit('stop');
+		        	self.musicEl.play = function(){
+		        		flashEl.emit('play');
+		        	}
+		        	self.musicEl.stop = function(){
+		        		flashEl.emit('stop');
+		        	}
+		        	self.musicEl.getPaused = function(){
+		        		return flashEl.getPaused() == 0;
+		        	}
+		        }, 250);
+			}
+			
+			Music.prototype.play = function(){
+				m_console('播放MP3');
+				this.musicEl.play();
+				this.viewCallback['play'].call();
+			}
+			
+			Music.prototype.stop = function(){
+				m_console('手动停止MP3');
+				this.musicEl.stop();
+				this.viewCallback['stop'].call();
+			}
+			
+			Music.prototype.emit = function(){
+				if (this.musicEl.getPaused()) {
+					this.play();
+				} else {
+					this.stop();
+				}
+			}
+			
+			function isSupportAudio(type){
+				if(type == "audio/mpeg") {
+					return canPlayAudioMP3();
+				}
+				return false;
+			}
+			
+			function canPlayAudioMP3(){
+			    try {
+			        var audio = new Audio();
+
+			        if(audio.canPlayType('audio/mpeg') == "probably")
+			            return true;
+			            
+			        audio.addEventListener('canplaythrough', function(e){
+			            return true;
+			        }, false);
+			        
+			        audio.addEventListener('error', function(e){
+			            return false;
+			        }, false);
+			        
+			        audio.src = "data:audio/mpeg;base64,/+MYxAAAAANIAAAAAExBTUUzLjk4LjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+			        audio.load();
+			        return true;
+			    }
+			    catch(e){
+			        return false;
+			    }
+			}
+
+			function flashHtml(movieName, src, data) {
+				var attr = {
+					width: 1,
+					height: 1,
+					quality: 'high',
+					style: '',
+					wmode: 'opaque' /*window|transparent|opaque*/
+				};
+				if (exports.name == "ie" && exports.version<=7) {
+					//2014.10.21 旧版IE加载flash需要添加随机数，随机数取值0-999
+					src += '?rnd=' + Math.floor(Math.random() * 1000);
+				}
+				return exports.name == "ie" && exports.version<11 ? [
+						'<object id="', movieName, '" name="', movieName, '" width="', attr.width, '" height="', attr.height, '" style="', attr.style, '" classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" codebase="https://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=9,0,28">',
+						'<param name="wmode" value="', attr.wmode, '" />',
+						'<param name="movie" value="', src, '" />',
+						'<param name="allowscriptaccess" value="always" />',
+						'<param name="flashvars" value="', data , '" />',
+						'</object>'
+					].join('') :
+					exports.name == "ie" && exports.version==11 ? [
+						'<object id="', movieName, '"  name="', movieName, '" data="', src, '" width="', attr.width, '" height="', attr.height, '" style="', attr.style, '" type="application/x-shockwave-flash">',
+						'<param name="wmode" value="', attr.wmode, '"/>',
+						'<param name="movie" value="', src, '"/>',
+						'<param name="quality" value="',attr.quality,'"/>',
+						'<param name="allowscriptaccess" value="always"/>',
+						'<param name="flashvars" value="', data , '"/>',
+						'</object>'
+					].join('') : [
+						'<embed id="', movieName, '" name="', movieName, '" src="' + src + '" width="', attr.width, '" height="', attr.height, '" style="', attr.style, '" flashvars="',data, '" wmode="', attr.wmode, '" allowscriptaccess="always" pluginspage="https://www.macromedia.com/go/getflashplayer" type="application/x-shockwave-flash" >',
+						'</embed>'
+					].join('');
+			}
+			
+			function v_init() {
+				m_console('创建MP3视图回调');
+				var html = [
+					'<div id="player">',
+						'<img width="32px" height="32px" src="mySound.png"/>',
+					'</div>'
+				].join("");			
+				var content = document.getElementById('content');
+				content.innerHTML += html;
+			}
+
+			function e_init() {
+				m_console('创建MP3事件回调');
+				var self = this;
+				var player = document.getElementById('player');
+				addEvent(player, 'click', function(){
+					self.emit();
+				})
+			}
+			
+			function v_play(){
+				m_console('播放MP3视图回调');
+				var img = document.getElementById('player').childNodes[0];
+				img.src = img.src.replace("png","gif");
+			}
+			
+			function v_stop(){
+				m_console('停止MP3视图回调');
+				var img = document.getElementById('player').childNodes[0];
+				img.src = img.src.replace("gif","png");
+			}			
+			
+			function addEvent(el, etype, fn){
+				if (window.addEventListener) {
+					el.addEventListener(etype, fn, false);
+				}else if (window.attachEvent) {
+					el.attachEvent('on' + etype, fn)
+				}else {
+					el['on' + etype] = fn;
+				}
+			}
+			
+			function m_console(msg) {
+				if (console && console.log) {
+					console.log(msg);
+				}
+			}
+		</script>
+		<style type="text/css">
+			#player {
+				width: 100px;
+				height: 32px;
+				padding: 4px 0px;
+				background: #CEF2FF;
+				border: 1px solid #a1cce8;
+				-webkit-border-radius: 5px;
+				-moz-border-radius: 5px;
+				border-radius: 5px;
+				text-align:left;
+			}
+		</style>
+	</head>
+
+	<body>
+		<div id="content"></div>
+		<script>
+			var music = new Music('1.mp3', 'audio/mpeg', {'init' : v_init, 'play' : v_play, 'stop' : v_stop}, {'init' : e_init});
+			music.init();
+		</script>
+	</body>
+
+</html>
