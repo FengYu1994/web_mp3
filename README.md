@@ -1,22 +1,28 @@
 一、功能：
+
 	在浏览器中播放mp3文件
 
 二、范围：
+
 	支持HTML5 Audio标签，且支持播放MP3格式文件：Chrome、Opera、IE9+、Edge
 	安装了Flash插件：Firefox、IE6-8
  	移动设备支持情况：UC、QQ、百度、微信、opera、chrome
 
 三、使用方法（例）：
+
 	var music = new Music('1.mp3', 'audio/mpeg', {'init' : v_init, 'play' : v_play, 'stop' : v_stop}, {'init' : e_init});
 	music.init();
       
 四、代码结构：
+
       1、浏览器判断
       2、Music对象
       3、视图、事件方法回调具体实现
       
 五、对象、变量。方法介绍：
+
 	5.1、浏览器判断
+	
 		exports.name：浏览器类别 （chrome|firefox|ie|opera|edge等）
 		exports.version: ie获取的是(6|7|8|9|10|11)大版本号，其余浏览器获取具体版本号
       
@@ -30,7 +36,7 @@
 				type: 音乐类型 (目前仅支持audio|mpeg)
 				viewCallback: 视图回调
 				eventCallback: 事件回调
-            
+             
             init()
 			功能：
 				创建Audio或[Object|embed]对象，加载MP3资源
@@ -101,9 +107,11 @@
 			音频对象初始化后，前端事件绑定
 			
 六、不足
+
 	仍有局限性，在不支持flash和audio标签的浏览器上（如mobile firefox）无法播放
 
 七、致谢
+
 	@DamonOehlman （thank you for browser.js） 一段很精简的浏览器类型判断的js代码
 	@breily (thank you for jquery.player.js， show me a way that javasript communicate with actionsript ) 
 	
