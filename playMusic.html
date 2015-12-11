@@ -87,8 +87,8 @@
 					self.viewCallback['stop'].call();
 				});
 				this.musicEl.getPaused = function(){
-	        		return this.paused;
-	        	}
+	        			return this.paused;
+	        		}
 			}
 			
 			Music.prototype.createSwfPlayer = function(){		
@@ -97,26 +97,26 @@
 				var id = 'player_hidden';
 				var swf = 'music.swf';
 				var html = flashHtml(id, swf, 'id='+id);
-		        this.musicEl = document.createElement('div');
-		        this.musicEl.innerHTML += html;
-		        this.musicEl.id = musicId;
-		        document.body.innerHTML += this.musicEl.outerHTML;
+		        	this.musicEl = document.createElement('div');
+		        	this.musicEl.innerHTML += html;
+		        	this.musicEl.id = musicId;
+		        	document.body.innerHTML += this.musicEl.outerHTML;
 		        
-		        var flashEl = (exports.name == 'ie' && exports.version <= 7) ? window[id] : document[id]; 
+				var flashEl = (exports.name == 'ie' && exports.version <= 7) ? window[id] : document[id]; 
 		        
-		        setTimeout(function(){
-		        	flashEl.emit('load', self.url);
-		        	flashEl.emit('stop');
-		        	self.musicEl.play = function(){
-		        		flashEl.emit('play');
-		        	}
-		        	self.musicEl.stop = function(){
-		        		flashEl.emit('stop');
-		        	}
-		        	self.musicEl.getPaused = function(){
-		        		return flashEl.getPaused() == 0;
-		        	}
-		        }, 250);
+		        	setTimeout(function(){
+			        	flashEl.emit('load', self.url);
+			        	flashEl.emit('stop');
+			        	self.musicEl.play = function(){
+			        		flashEl.emit('play');
+			        	}
+			        	self.musicEl.stop = function(){
+			        		flashEl.emit('stop');
+			        	}
+			        	self.musicEl.getPaused = function(){
+			        		return flashEl.getPaused() == 0;
+			        	}
+		        	}, 250);
 			}
 			
 			Music.prototype.play = function(){
