@@ -54,6 +54,48 @@
 			  return !!pair[2];
 			}		
 		
+			var audioMp3Flag = true;
+			
+			canPlayAudioMP3(function(flag){audioMp3Flag = flag;})			
+						
+			/**
+			 * 检测浏览器是否能使用Audio对象播放mp3文件 
+			 */
+			function canPlayAudioMP3(callback){
+				//1、try catch 判定浏览器中是否有Audio对象
+			    try {
+			        var audio = new Audio();
+					
+					//利用canPlayType方法，检测浏览器是否有MP3解码器
+			        if(audio.canPlayType('audio/mpeg') == "probably")
+			            callback(true);
+			        
+			        //利用canPlaythrough事件，监听音频是否可以加载成功
+			        audio.addEventListener('canplaythrough', function(e){
+			            callback(true);
+			        }, false);
+			        
+			        //利用error事件，监听音频播放是否会出现异常
+			        audio.addEventListener('error', function(e){
+			            callback(false);
+			        }, false);
+			        
+			        //base64编码最小的MP3文件
+			        audio.src = "data:audio/mpeg;base64,/+MYxAAAAANIAAAAAExBTUUzLjk4LjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+			        audio.load();
+			        
+			    }catch(e){
+			        callback(false);
+			    }
+			}		
+						
+			/**
+			 * Music对象的构造函数
+			 * @param {Object} url	音乐文件地址
+			 * @param {Object} type 音乐类型、暂时只支持audio/mpeg，加一个参数便于拓展
+			 * @param {Object} viewCallback	音乐初始化、播放逻辑完成后的视图回调
+			 * @param {Object} eventCallback 音乐初始化、播放逻辑完成后的事件回调
+			 */
 			function Music(url, type, viewCallback, eventCallback){
 				this.url = url;
 				this.type = type;
@@ -61,7 +103,12 @@
 				this.eventCallback = eventCallback;
 				this.isSupportAudio = isSupportAudio(this.type);
 			}
-			
+			/**
+			 * init初始化方法
+			 * 在支持audio标签且能正常解码MP3的情况下创建audio标签
+			 * 否则使用flash的方式
+			 * 完成后，进行初始化方法的视图及事件回调
+			 */
 			Music.prototype.init = function(){
 				var self = this;
 				if (this.isSupportAudio) {
@@ -72,7 +119,7 @@
 				this.viewCallback['init'].call(this);
 				this.eventCallback['init'].call(this);
 			}
-			
+						
 			Music.prototype.createAudioPlayer = function(){
 				var self = this;
 				this.musicEl = document.createElement('audio');
@@ -87,8 +134,8 @@
 					self.viewCallback['stop'].call();
 				});
 				this.musicEl.getPaused = function(){
-	        		return this.paused;
-	        	}
+					return this.paused;
+				}
 			}
 			
 			Music.prototype.createSwfPlayer = function(){		
@@ -97,28 +144,28 @@
 				var id = 'player_hidden';
 				var swf = 'music.swf';
 				var html = flashHtml(id, swf, 'id='+id);
-		        this.musicEl = document.createElement('div');
-		        this.musicEl.innerHTML += html;
-		        this.musicEl.id = musicId;
-		        document.body.innerHTML += this.musicEl.outerHTML;
-		        
-		        var flashEl = (exports.name == 'ie' && exports.version <= 7) ? window[id] : document[id]; 
-		        
-		        setTimeout(function(){
-		        	flashEl.emit('load', self.url);
-		        	flashEl.emit('stop');
-		        	self.musicEl.play = function(){
-		        		flashEl.emit('play');
-		        	}
-		        	self.musicEl.stop = function(){
-		        		flashEl.emit('stop');
-		        	}
-		        	self.musicEl.getPaused = function(){
-		        		return flashEl.getPaused() == 0;
-		        	}
-		        }, 250);
+			    this.musicEl = document.createElement('div');
+			    this.musicEl.innerHTML += html;
+			    this.musicEl.id = musicId;
+			    document.body.innerHTML += this.musicEl.outerHTML;
+			    
+			    var flashEl = (exports.name == 'ie' && exports.version <= 7) ? window[id] : document[id]; 
+			    
+			    setTimeout(function(){
+			    	flashEl.emit('load', self.url);
+			    	flashEl.emit('stop');
+			    	self.musicEl.play = function(){
+			    		flashEl.emit('play');
+			    	}
+			    	self.musicEl.stop = function(){
+			    		flashEl.emit('stop');
+			    	}
+			    	self.musicEl.getPaused = function(){
+			    		return flashEl.getPaused() == 0;
+			    	}
+			    }, 250);
 			}
-			
+						
 			Music.prototype.play = function(){
 				m_console('播放MP3');
 				this.musicEl.play();
@@ -141,35 +188,17 @@
 			
 			function isSupportAudio(type){
 				if(type == "audio/mpeg") {
-					return canPlayAudioMP3();
+					return audioMp3Flag;
 				}
 				return false;
 			}
-			
-			function canPlayAudioMP3(){
-			    try {
-			        var audio = new Audio();
 
-			        if(audio.canPlayType('audio/mpeg') == "probably")
-			            return true;
-			            
-			        audio.addEventListener('canplaythrough', function(e){
-			            return true;
-			        }, false);
-			        
-			        audio.addEventListener('error', function(e){
-			            return false;
-			        }, false);
-			        
-			        audio.src = "data:audio/mpeg;base64,/+MYxAAAAANIAAAAAExBTUUzLjk4LjIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-			        audio.load();
-			        return true;
-			    }
-			    catch(e){
-			        return false;
-			    }
-			}
-
+			/*
+			 * 生成嵌入网页的flash代码 
+			 * @param {Object} movieName 元素Id
+			 * @param {Object} src	swf文件
+			 * @param {Object} data 需要传入的参数
+			 */
 			function flashHtml(movieName, src, data) {
 				var attr = {
 					width: 1,
@@ -179,9 +208,13 @@
 					wmode: 'opaque' /*window|transparent|opaque*/
 				};
 				if (exports.name == "ie" && exports.version<=7) {
-					//2014.10.21 旧版IE加载flash需要添加随机数，随机数取值0-999
+					//旧版IE加载flash需要添加随机数，随机数取值0-999
 					src += '?rnd=' + Math.floor(Math.random() * 1000);
 				}
+				/* 1、IE6-10： object标签 + classid + codebase
+				 * 2、IE11浏览器：object标签 + type=application/x-shockwave-flash
+				 * 3、其他浏览器（Chrome|Firefox|Opera）等：embed标签 + type=application/x-shockwave-flash
+				 */
 				return exports.name == "ie" && exports.version<11 ? [
 						'<object id="', movieName, '" name="', movieName, '" width="', attr.width, '" height="', attr.height, '" style="', attr.style, '" classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" codebase="https://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=9,0,28">',
 						'<param name="wmode" value="', attr.wmode, '" />',
